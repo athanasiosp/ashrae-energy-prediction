@@ -1,0 +1,111 @@
+---
+title: "Building energy prediction"
+author: "Athanasios Pliousis"
+date: "21/6/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(scales)
+```
+
+## Reading the data
+
+```{r Import data}
+df_train <- read_csv("train.csv")
+df_test <- read_csv("test.csv")
+building_meta <- read_csv("building_metadata.csv")
+weather_test <- read_csv("weather_test.csv")
+weather_train <- read_csv("weather_train.csv")
+
+# sample_submission <- read_csv("sample_submission.csv")
+```
+
+
+```{r Unique identification}
+
+df_train$building_id %>% unique() %>% NROW() # 1449 buildings
+
+building_meta$site_id %>% unique() # 15 unique sites
+
+building_meta$primary_use %>% unique() # 16 unique uses
+
+```
+
+
+```{r Making a square_meters variable}
+building_meta <- building_meta %>% 
+    mutate(square_meter = square_feet * 0.09290304) 
+
+# 1 square foot = 0.09290304 square meters
+```
+
+```{r}
+joined <- df_train %>% full_join(building_meta, by = 'building_id')
+```
+
+
+
+```{r}
+# Correction to units for site 0 electric meter
+# posted in ashrae-energy-prediction 7 months ago [gold]
+# 
+# Due to a miscommunication, the electric meter readings for site 0 were not properly converted to units of kWh and are in kBTU. We apologize for the error and the resulting inconvenience.
+# 
+# The units of the electric meter readings for site 0 will not be updated (i.e., they will remain as is), since this could potentially disrupt the workflows and models of many teams. For models that are sensitive to units/absolute values, the issue can be avoided with the right conversion factors. Multiply by 0.2931 to get to model inputs into kWh like the other sites, and 3.4118 to get back to kBTU for scoring.
+
+joined <- joined %>% 
+    mutate(meter_reading = if_else(site_id == 0 & meter == 0, 
+                                   meter_reading *  0.2931,
+                                   meter_reading))
+```
+
+
+How many building have each meter?
+```{r}
+electric_buildings <- joined %>% filter(meter == 0) %>% # 0:electricity
+    count(building_id) %>% 
+    pull(building_id)   # 1413 buildings all 15 sites
+
+chill_buildings <- joined %>% filter(meter == 1) %>% # 1:chilledwater
+    count(building_id) %>% 
+    pull(building_id)   # 498 buildings
+
+
+steam_buildings <- joined %>% filter(meter == 2) %>% # 2:steam
+    count(building_id) %>% 
+    pull(building_id)   # 324 buildings
+
+hotwater_buildings <- joined %>% filter(meter == 3) %>% # 3:hotwater
+    count(building_id) %>% 
+    pull(building_id)   # 145 buildings
+
+
+```
+
+Need to check which buildings have all three meters.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
