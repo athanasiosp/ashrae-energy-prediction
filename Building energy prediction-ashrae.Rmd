@@ -40,6 +40,7 @@ building_meta$primary_use %>% unique() # 16 unique uses
 
 
 ```{r Making a square_meters variable}
+
 building_meta <- building_meta %>% 
     mutate(square_meter = square_feet * 0.09290304) 
 
@@ -91,8 +92,26 @@ hotwater_buildings <- joined %>% filter(meter == 3) %>% # 3:hotwater
 
 Need to check which buildings have all three meters.
 
+```{r}
+joined$timestamp <- joined$timestamp %>% lubridate::ymd_hms()
+```
 
 
+Create a variable energy per square meter
+```{r}
+joined <- joined %>% mutate(energy_sqm = meter_reading / square_meter)
+```
+
+```{r}
+joined$energy_sqm %>% summary()
+```
+
+The max energy per sqm is extremely high for the max value. The until the 3rd quantile it is below 0.0311.
+Lets look at what is happening after that.
+
+```{r}
+joined %>% filter(energy_sqm >= quantile(energy_sqm, 0.95)) %>% tail(100)
+```
 
 
 
