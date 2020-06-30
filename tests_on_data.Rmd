@@ -52,7 +52,7 @@ summary(train_dt)
 
 
 ```{r}
-joined <- train_dt %>% 
+joined <- df_train %>% 
   full_join(., building_meta, by = "building_id")
 ```
 
@@ -94,7 +94,7 @@ joined %>% count(site_id) %>%  ggplot(aes(site_id, n)) + geom_col() + scale_y_co
 
 
 ```{r fig.height=9,fig.width=16}
-joined %>% filter(meter == 3) %>%  ggplot(aes(timestamp, meter_reading)) + geom_line() + facet_wrap(~ site_id, scales="free_y")
+joined %>% filter(meter == 2) %>%  ggplot(aes(timestamp, meter_reading)) + geom_point() + facet_wrap(~ site_id, scales="free_y")
 
 ```
 
