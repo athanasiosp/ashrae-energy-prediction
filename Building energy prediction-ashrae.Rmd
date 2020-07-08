@@ -4,7 +4,7 @@ author: "Athanasios Pliousis"
 date: "21/6/2020"
 output: html_document
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ```{r setup, include=FALSE}
@@ -90,7 +90,7 @@ hotwater_buildings <- joined %>% filter(meter == 3) %>% # 3:hotwater
 
 ```
 
-Need to check which buildings have all three meters.
+
 
 ```{r}
 joined$timestamp <- joined$timestamp %>% lubridate::ymd_hms()
@@ -109,17 +109,34 @@ joined$energy_sqm %>% summary()
 The max energy per sqm is extremely high for the max value. The until the 3rd quantile it is below 0.0311.
 Lets look at what is happening after that.
 
-```{r}
-joined %>% filter(energy_sqm >= quantile(energy_sqm, 0.95)) %>% tail(100)
+```{r fig.width=20, fig.height=13}
+joined %>% filter(energy_sqm >= quantile(energy_sqm, 0.95)) %>% 
+  arrange(desc(energy_sqm)) %>% 
+  ggplot(aes(timestamp, energy_sqm, color = as.factor(building_id))) + geom_point(alpha = 0.5) + geom_text(aes(label = building_id)) + theme(legend.position = "none")
+```
+
+Buildings 1099 and 778 are way off in terms of energy per sqare meter. I will examine them in isolation.
+
+```{r fig.width=16, fig.height=9}
+joined %>% filter(building_id == 778) %>% 
+  arrange(desc(energy_sqm)) %>% 
+  ggplot(aes(timestamp, energy_sqm, color = as.factor(building_id), alpha = 0.9)) + geom_point() + theme(legend.position = "none")
+
 ```
 
 
+```{r fig.width=16, fig.height=9}
+joined %>% filter(building_id == 1099) %>% 
+  arrange(desc(energy_sqm)) %>% 
+  ggplot(aes(timestamp, energy_sqm, color = as.factor(building_id))) + geom_point(aes(alpha = 0.9)) + theme(legend.position = "none")
 
+```
 
-
-
-
-
+```{r fig.width=20, fig.height=13}
+joined %>% filter(energy_sqm >= quantile(energy_sqm, 0.95), !(building_id %in% c(778, 1099))) %>% 
+  arrange(desc(energy_sqm)) %>% 
+  ggplot(aes(timestamp, energy_sqm, color = as.factor(building_id))) + geom_point(alpha = 0.5) + theme(legend.position = "none")
+```
 
 
 
