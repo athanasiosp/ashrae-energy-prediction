@@ -4,7 +4,7 @@ author: "Athanasios Pliousis"
 date: "6/22/2020"
 output: html_document
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r setup, fig.width=20, fig.height=13, include=FALSE}
@@ -22,27 +22,9 @@ building_meta <- read_csv('building_metadata.csv')
 
 ## EDA
 
-
-```{r}
-train_dt$timestamp <- lubridate::ymd_hms(train_dt$timestamp)
-
-class(train_dt$timestamp)
-```
-```{r}
-# train_dt[train_dt$meter_reading == max(train_dt$meter_reading),]
-
-train_dt %>% filter(meter_reading == max(meter_reading))
 ```
 
 
-```{r}
-# building_meta[building_meta$building_id == 1099,]
-
-building_meta %>% filter(building_id == 1099)
-
-summary(building_meta)
-
-summary(train_dt)
 ```
 
 
@@ -69,7 +51,7 @@ joined %>% summary()
 ```{r}
 
 
-joined %>% filter(energy_per_sqm == max(energy_per_sqm))
+joined %>% filter(energy_sqm == max(energy_sqm))
 
 joined %>% filter(energy_per_sqm >= quantile(joined$energy_per_sqm, 0.99))
 

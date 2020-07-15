@@ -13,6 +13,9 @@ knitr::opts_chunk$set(echo = TRUE, fig.width = 16, fig.height = 10)
 library(tidyverse)
 library(lubridate)
 library(scales)
+library(ggrepel)
+library(patchwork)
+library(broom)
 ```
 
 ## Reading the data
@@ -49,6 +52,8 @@ building_meta <- building_meta %>%
 
 ```{r}
 joined <- df_train %>% full_join(building_meta, by = 'building_id')
+
+rm(df_train)
 ```
 
 
@@ -97,28 +102,88 @@ joined$timestamp <- joined$timestamp %>% lubridate::ymd_hms()
 ```
 
 
-Create a variable energy per square meter
+Create the variable energy per square meter to be able to compare energy use on a common characteristic among buildings.
+
 ```{r}
 joined <- joined %>% mutate(energy_sqm = meter_reading / square_meter)
 ```
 
 ```{r}
 joined$energy_sqm %>% summary()
+
 ```
 
 The max energy per sqm is extremely high for the max value. The until the 3rd quantile it is below 0.0311.
 Lets look at what is happening after that.
 
 ```{r}
+joined %>% filter(energy_sqm == max(energy_sqm))
+```
+
+
+```{r}
+joined %>% pull(energy_sqm) %>% quantile(c(0.95, 0.999))
+
+
+```
+
+
+```{r}
+building_outliers <- joined %>% filter(energy_sqm > 5) %>% distinct(building_id) %>% arrange(building_id)
+```
+
+
+
+
+```{r}
+summaries <- tibble("Min."= 0, "1st Qu."= 0, "Median" = 0, "Mean" = 0,  "3rd Qu."= 0," Max."= 0)
+
+for (id in building_outliers) {
+  print(id)
+  joined %>% 
+  filter(building_id == "id") %>% 
+  pull(energy_sqm) %>%
+    summary()
+
+
+}
+    
+   summary(joined[joined$building_id == 50, "energy_sqm"]) %>% class()
+  
+   apply(joined[joined$building_id == building , "energy_sqm"], margin, ...)
+
+```
+
+
+
+
+
+
+
+
+
+```{r}
+energ_hist_0_025 <- joined %>% filter(energy_sqm > 0, energy_sqm < 0.25) %>% ggplot(aes(energy_sqm)) + geom_histogram(binwidth = 0.001)
+energ_hist_025_1 <- joined %>% filter(energy_sqm > 0.25, energy_sqm < 1) %>% ggplot(aes(energy_sqm)) + geom_histogram(binwidth = 0.001)
+energ_hist_1_5 <- joined %>% filter(energy_sqm > 1, energy_sqm < 5) %>% ggplot(aes(energy_sqm)) + geom_histogram(binwidth = 0.1)
+energ_hist_5_20 <- joined %>% filter(energy_sqm > 5, energy_sqm < 20) %>% ggplot(aes(energy_sqm)) + geom_histogram(binwidth = 0.1)
+energ_hist_20_30 <- joined %>% filter(energy_sqm > 20, energy_sqm < 30) %>% ggplot(aes(energy_sqm)) + geom_histogram(binwidth = 0.1)
+energ_hist_30_80 <- joined %>% filter(energy_sqm > 30, energy_sqm < 80) %>% ggplot(aes(energy_sqm)) + geom_histogram(binwidth = 1)
+energ_hist_80_over <- joined %>% filter(energy_sqm > 80) %>% ggplot(aes(energy_sqm)) + geom_histogram(binwidth = 1)
+
+(energ_hist_0_025 | energ_hist_025_1 | energ_hist_1_5 ) / (energ_hist_5_20 | energ_hist_20_30 | energ_hist_30_80) / energ_hist_80_over
+
+```
+
+
+
+```{r}
 joined %>% 
   filter(energy_sqm >= quantile(energy_sqm, 0.95)) %>% 
-  arrange(desc(energy_sqm)) %>% 
-  ggplot(aes(timestamp, energy_sqm, color = as.factor(building_id))) + 
-  geom_point(alpha = 0.5) + 
-  geom_text(aes(label = building_id)) + 
+  ggplot(aes(timestamp, energy_sqm), color = as.factor(building_id)) + 
+  geom_point() +
+  geom_text(aes(label = building_id), alpha = 0.8) +
   theme(legend.position = "none")
-
-
 
 ```
 
@@ -147,7 +212,7 @@ joined %>% filter(building_id == 778,
                   meter == 0) %>% 
                   #timestamp >= min(timestamp) + lubridate::ddays(2), timestamp <= min(timestamp) + lubridate::ddays(4)) %>%  
   ggplot(aes(timestamp, energy_sqm)) + 
-  geom_line(alpha = 0.5)  
+  geom_line(alpha = 0.5)  +
   scale_x_datetime(labels = date_format("%d-%m--%H"), date_breaks = "1 month") +  
   theme(axis.text.x = element_text(angle = 90))
 
@@ -174,29 +239,9 @@ joined %>% filter(meter == 0, building_id == 778, meter_reading != 0)
 So building 778 only has values for meter 1: chilledwater
 
 
-
-
-
-
-```{r}
-joined %>% 
-  filter(building_id == 778)  %>% distinct(meter) #timestamp >= "2016-01-01", timestamp <= 2016-10-31)
-  summarise(sum = sum(meter_reading))
-  
-```
-
-
-
-
-
-
-
-
-
 ```{r }
 joined %>% filter(building_id == 1099) %>% 
-  arrange(desc(energy_sqm)) %>% 
-  ggplot(aes(timestamp, energy_sqm, color = as.factor(building_id))) + 
+  ggplot(aes(timestamp, energy_sqm, color = as.factor(meter))) + 
   geom_point(aes(alpha = 0.9)) + 
   theme(legend.position = "none")
 
@@ -206,7 +251,6 @@ joined %>% filter(building_id == 1099) %>%
 ```{r }
 joined %>% 
   filter(energy_sqm >= quantile(energy_sqm, 0.95), !(building_id %in% c(778, 1099))) %>% 
-  arrange(desc(energy_sqm)) %>% 
   ggplot(aes(timestamp, energy_sqm, color = as.factor(building_id))) + 
   geom_point(alpha = 0.5) + 
   theme(legend.position = "none")
