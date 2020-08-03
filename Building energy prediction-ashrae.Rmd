@@ -209,25 +209,36 @@ joined %>% filter(building_id == 778, meter == 0, timestamp >= "2016-08-23", tim
   select(timestamp, energy_sqm)
 ```
 			
+The two problematic values are: 
 2016-08-23 14:00:00	0.03256654
 2016-08-23 15:00:00	0.03249203
 
-
-
-
-
+So i will replace them
 
 
 ```{r}
 
-joined %>% filter(building_id == 778, meter == 0)
-
+  
+joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-24 14:00:00")) %>% 
   mutate(
     meter_reading = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(meter_reading),
     energy_sqm = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(energy_sqm))
 
 
 ```
+
+
+```{r}
+
+joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-24 15:00:00")) %>% 
+  mutate(
+    meter_reading = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 15:00:00")) %>% pull(meter_reading),
+    energy_sqm = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 15:00:00")) %>% pull(energy_sqm))
+
+
+```
+
+
 
 
 
