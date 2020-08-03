@@ -8,7 +8,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.width = 16, fig.height = 10)
+knitr::opts_chunk$set(echo = TRUE, fig.width = 8, fig.height = 5)
 
 library(tidyverse)
 library(lubridate)
@@ -17,6 +17,7 @@ library(ggrepel)
 library(patchwork)
 library(broom)
 ```
+
 
 ## Reading the data
 
@@ -122,44 +123,31 @@ joined %>% filter(energy_sqm == max(energy_sqm))
 
 
 ```{r}
-joined %>% pull(energy_sqm) %>% quantile(c(0.95, 0.999))
+joined$energy_sqm %>% quantile(c(0.95, 0.999))
 
 
 ```
-
+Let first find buildings that are over a threshold of energy_sqm > 5 rather the 99.9% percentile value. And we will see if we 
+change it after.
 
 ```{r}
 building_outliers <- joined %>% filter(energy_sqm > 5) %>% distinct(building_id) %>% arrange(building_id)
 ```
 
 
-
-
 ```{r}
-summaries <- tibble("Min."= 0, "1st Qu."= 0, "Median" = 0, "Mean" = 0,  "3rd Qu."= 0," Max."= 0)
-
-for (id in building_outliers) {
-  print(id)
-  joined %>% 
-  filter(building_id == "id") %>% 
-  pull(energy_sqm) %>%
-    summary()
-
-
-}
-    
-   summary(joined[joined$building_id == 50, "energy_sqm"]) %>% class()
+outlier_building_summary <- joined %>% 
+  filter(building_id %in% pull(building_outliers)) %>%
+  group_by(building_id) %>% 
+  summarise(summaries = list(tidy(summary(energy_sqm)))) %>% 
+  unnest(summaries) %>% 
+  arrange(median)
   
-   apply(joined[joined$building_id == building , "energy_sqm"], margin, ...)
-
 ```
 
-
-
-
-
-
-
+Buildings 1099 and 778 are way off in terms of energy per square meter. I will examine them in isolation but lets
+first do the histograms of all the energy_sqm values broken down in a step by step fashion. The breaks are arbitrary
+put by me looking at the data and making sense of the spread of the values.
 
 
 ```{r}
@@ -177,18 +165,6 @@ energ_hist_80_over <- joined %>% filter(energy_sqm > 80) %>% ggplot(aes(energy_s
 
 
 
-```{r}
-joined %>% 
-  filter(energy_sqm >= quantile(energy_sqm, 0.95)) %>% 
-  ggplot(aes(timestamp, energy_sqm), color = as.factor(building_id)) + 
-  geom_point() +
-  geom_text(aes(label = building_id), alpha = 0.8) +
-  theme(legend.position = "none")
-
-```
-
-Buildings 1099 and 778 are way off in terms of energy per square meter. I will examine them in isolation.
-
 ```{r }
 joined %>% filter(building_id == 778) %>% 
   ggplot(aes(timestamp, energy_sqm, color = as.factor(meter))) + 
@@ -202,7 +178,8 @@ joined %>% filter(building_id == 778) %>%
 It is obvious that around October there is something going one that changes completely the behavior of usage in meter 1: chilledwater. The difference is extreme. If we had data over one year i could check to see if it is a event related pattern. I should check the test data to see if it is repeating.
 
 Lets first check the electricity consumption. which seems to have relatively stable baseline consumption and hourly peaks. 
-The low values which i consider as the night consumption (and i defined previously as the base line) seem elevated between January and mid March and again at the end of October and through January.
+The low values which i consider as the night consumption (and i defined previously as the base line) seem elevated
+between January and mid March and again at the end of October and through January.
 
 In the modeling phase a smoothing over every hour in the week or in a month multiple could summarize the repeating trend. 
 
@@ -218,25 +195,40 @@ joined %>% filter(building_id == 778,
 
 
 ```
-Let us chech what that outlier is 
+Lets check what that outlier is. 
 
 ```{r}
-joined %>% filter(building_id == 778, timestamp >= "2016-08-24", timestamp < "2016-08-25") %>% 
+joined %>% filter(building_id == 778, meter == 0, timestamp >= "2016-08-24", timestamp < "2016-08-25") %>% 
   ggplot(aes(timestamp, energy_sqm)) + 
   geom_line(alpha = 0.5)
 ```
-It is probably a power outage. I should put the mean consumption of the month in that time duration to fill the gap.
+It is probably a power outage? I will probably put the same consumption of the previous day in that time duration to fill the gap.
+
+```{r}
+joined %>% filter(building_id == 778, meter == 0, timestamp >= "2016-08-23", timestamp < "2016-08-25") %>% 
+  select(timestamp, energy_sqm)
+```
+			
+2016-08-23 14:00:00	0.03256654
+2016-08-23 15:00:00	0.03249203
+
+
+
 
 
 
 
 ```{r}
-joined %>% filter(meter == 0, building_id == 778, meter_reading != 0)
+
+joined %>% filter(building_id == 778, meter == 0)
+
+  mutate(
+    meter_reading = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(meter_reading),
+    energy_sqm = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(energy_sqm))
+
+
 ```
 
-
-
-So building 778 only has values for meter 1: chilledwater
 
 
 ```{r }
