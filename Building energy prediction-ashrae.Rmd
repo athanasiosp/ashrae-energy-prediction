@@ -143,6 +143,7 @@ outlier_building_summary <- joined %>%
   unnest(summaries) %>% 
   arrange(median)
   
+outlier_building_summary
 ```
 
 Buildings 1099 and 778 are way off in terms of energy per square meter. I will examine them in isolation but lets
@@ -206,37 +207,67 @@ It is probably a power outage? I will probably put the same consumption of the p
 
 ```{r}
 joined %>% filter(building_id == 778, meter == 0, timestamp >= "2016-08-23", timestamp < "2016-08-25") %>% 
-  select(timestamp, energy_sqm)
+  select(timestamp, meter_reading, energy_sqm)
 ```
 			
 The two problematic values are: 
-2016-08-23 14:00:00	0.03256654
-2016-08-23 15:00:00	0.03249203
+timestamp   meter_readinge  energy_sqm
 
-So i will replace them
+2016-08-24 14:00:00	0.000	0.00000000		
+2016-08-24 15:00:00	0.000	0.00000000	
+
+So i will replace them with
+2016-08-23 14:00:00	327.783	0.03256654		
+2016-08-23 15:00:00	327.033	0.03249203
 
 
 ```{r}
 
+# The row with the problem
+d24_08_1400 <- joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-24 14:00:00"))
+
+d24_08_1500 <- joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-24 15:00:00"))
+
+mr23_08_1400 <-  joined %>% 
+  filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(meter_reading)
+
+mr23_08_1500 <-  joined %>% 
+  filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 15:00:00")) %>% pull(meter_reading)
+
+en_sqm23_08_1400 <-  joined %>% 
+  filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(energy_sqm)
+
+en_sqm23_08_1500 <-  joined %>% 
+  filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 15:00:00")) %>% pull(energy_sqm)
+
+
+joined <- joined %>%
+  mutate(meter_reading = replace(meter_reading,
+             # having already found  where the problematic value is a am setting it          
+                                 meter_reading == d24_08_1400 %>% pull(meter_reading),
+          # and replacing the meter_reading value with the same value of the previous day
+                                 mr23_08_1400),
+         
+         meter_reading = replace(meter_reading,
+                                 meter_reading == d24_08_1500 %>% pull(meter_reading),
+                                 mr23_08_1500),
+         
+         # Same thing and timestamp for replacing the energy_sqm value. 
+         energy_sqm = replace(energy_sqm,
+                              energy_sqm == d24_08_1400 %>% pull(energy_sqm), 
+                              en_sqm23_08_1400),
+         
+         energy_sqm = replace(energy_sqm,
+                              energy_sqm == d24_08_1500 %>% pull(energy_sqm), 
+                              en_sqm23_08_1500)
+         )
   
-joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-24 14:00:00")) %>% 
-  mutate(
-    meter_reading = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(meter_reading),
-    energy_sqm = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 14:00:00")) %>% pull(energy_sqm))
+
+
 
 
 ```
 
-
-```{r}
-
-joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-24 15:00:00")) %>% 
-  mutate(
-    meter_reading = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 15:00:00")) %>% pull(meter_reading),
-    energy_sqm = joined %>% filter(building_id == 778, meter == 0, timestamp == ymd_hms("2016-08-23 15:00:00")) %>% pull(energy_sqm))
-
-
-```
 
 
 
