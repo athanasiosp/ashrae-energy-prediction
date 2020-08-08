@@ -8,7 +8,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.width = 16, fig.height = 10)
+knitr::opts_chunk$set(echo = TRUE) #fig.width = 16, fig.height = 10)
 
 library(tidyverse)
 library(lubridate)
@@ -114,7 +114,7 @@ joined$energy_sqm %>% summary()
 ```
 
 The max energy per sqm is extremely high for the max value. The until the 3rd quantile it is below 0.0311.
-Lets look at what is happening after that.
+Lets look at what the max value.
 
 ```{r}
 joined %>% filter(energy_sqm == max(energy_sqm))
@@ -130,35 +130,33 @@ joined %>% pull(energy_sqm) %>% quantile(c(0.95, 0.999))
 
 ```{r}
 building_outliers <- joined %>% filter(energy_sqm > 5) %>% distinct(building_id) %>% arrange(building_id)
-```
 
+building_outliers
+```
 
 
 
 ```{r}
-summaries <- tibble("Min."= 0, "1st Qu."= 0, "Median" = 0, "Mean" = 0,  "3rd Qu."= 0," Max."= 0)
-
-for (id in building_outliers) {
-  print(id)
-  joined %>% 
-  filter(building_id == "id") %>% 
-  pull(energy_sqm) %>%
-    summary()
+joined %>% 
+  filter(energy_sqm > 5) %>% # building_id %in% pull(building_outliers)
+  group_by(building_id) %>% 
+  summarise(summaries = list(tidy(summary(energy_sqm)))) %>% 
+  unnest(summaries) %>% 
+  arrange(median)
 
 
-}
-    
-   summary(joined[joined$building_id == 50, "energy_sqm"]) %>% class()
-  
-   apply(joined[joined$building_id == building , "energy_sqm"], margin, ...)
 
 ```
 
 
-
-
-
-
+```{r}
+joined %>% 
+  filter(building_id %in% pull(building_outliers)) %>% 
+  group_by(building_id) %>% 
+  summarise(summaries = list(tidy(summary(energy_sqm)))) %>% 
+  unnest(summaries) %>% 
+  arrange(median)
+```
 
 
 
